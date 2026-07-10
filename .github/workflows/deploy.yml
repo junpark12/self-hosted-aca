@@ -47,9 +47,17 @@ jobs:
       - name: Run tests
         run: npm test
 
+      - name: Debug identity endpoint (temporary)
+        run: |
+          echo "IDENTITY_ENDPOINT=$IDENTITY_ENDPOINT"
+          echo "IDENTITY_HEADER is set: $([ -n "$IDENTITY_HEADER" ] && echo yes || echo no)"
+          echo "MSI_ENDPOINT=$MSI_ENDPOINT"
+          curl -s -m 10 -o /dev/null -w "IMDS status: %{http_code}\n" -H "Metadata:true" "http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=https://management.azure.com/" || echo "IMDS curl failed"
+          az --version | head -3
+
       - name: Deploy to Azure App Service (Managed Identity)
         run: |
-          az login --identity
+          az login --identity --debug 2>&1 | tail -60
           zip -r package.zip . -x ".git/*"
           az webapp deploy \
             --resource-group "${{ env.AZURE_RESOURCE_GROUP }}" \

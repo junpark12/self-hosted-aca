@@ -1,0 +1,16 @@
+{
+  "name": "self-hosted-aca-webapp",
+  "version": "1.0.0",
+  "description": "Simple Node.js (Express) app used to test GitHub Actions self-hosted runner (Azure Container Apps + KEDA) deployment to Azure App Service",
+  "main": "server.js",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "test": "echo \"no tests yet\" && exit 0"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}

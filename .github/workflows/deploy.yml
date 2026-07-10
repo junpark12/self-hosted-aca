@@ -1,0 +1,49 @@
+name: Deploy to Azure App Service (via self-hosted runner)
+
+# This workflow is designed to run on the ephemeral Azure Container Apps + KEDA
+# self-hosted runner described in the accompanying infrastructure doc
+# (github-actions-runners-on-aca-keda.md). It builds this simple Node.js app
+# and deploys it to an Azure App Service (Linux, Node) instance.
+#
+# Required GitHub secrets (Settings -> Secrets and variables -> Actions):
+#   AZURE_WEBAPP_PUBLISH_PROFILE  -> Publish profile XML downloaded from the
+#                                    target App Service (Get publish profile)
+# Required GitHub variables (or hardcode below):
+#   AZURE_WEBAPP_NAME             -> Name of the target Azure App Service
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  AZURE_WEBAPP_NAME: ${{ vars.AZURE_WEBAPP_NAME }}
+  NODE_VERSION: '20.x'
+
+jobs:
+  build-and-deploy:
+    # 'container-app' label must match RUNNER_LABELS on the Container App Job
+    # and the 'labels' metadata on the KEDA github-runner scale rule.
+    runs-on: [self-hosted, container-app]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install dependencies
+        run: npm ci --omit=dev
+
+      - name: Run tests
+        run: npm test
+
+      - name: Deploy to Azure App Service
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ env.AZURE_WEBAPP_NAME }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: .

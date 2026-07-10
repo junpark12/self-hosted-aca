@@ -49,11 +49,16 @@ jobs:
 
       - name: Debug identity endpoint (temporary)
         run: |
-          echo "IDENTITY_ENDPOINT=$IDENTITY_ENDPOINT"
-          echo "IDENTITY_HEADER is set: $([ -n "$IDENTITY_HEADER" ] && echo yes || echo no)"
-          echo "MSI_ENDPOINT=$MSI_ENDPOINT"
-          curl -s -m 10 -o /dev/null -w "IMDS status: %{http_code}\n" -H "Metadata:true" "http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=https://management.azure.com/" || echo "IMDS curl failed"
-          az --version | head -3
+          echo "--- resource=https://management.azure.com/ ---"
+          curl -s -m 10 -H "X-IDENTITY-HEADER: $IDENTITY_HEADER" \
+            "$IDENTITY_ENDPOINT?api-version=2019-08-01&resource=https://management.azure.com/" \
+            -o /tmp/token1.json -w "HTTP %{http_code}\n"
+          head -c 300 /tmp/token1.json; echo
+          echo "--- resource=https://management.core.windows.net/ ---"
+          curl -s -m 10 -H "X-IDENTITY-HEADER: $IDENTITY_HEADER" \
+            "$IDENTITY_ENDPOINT?api-version=2019-08-01&resource=https://management.core.windows.net/" \
+            -o /tmp/token2.json -w "HTTP %{http_code}\n"
+          head -c 300 /tmp/token2.json; echo
 
       - name: Deploy to Azure App Service (Managed Identity)
         run: |

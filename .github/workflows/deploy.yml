@@ -47,22 +47,9 @@ jobs:
       - name: Run tests
         run: npm test
 
-      - name: Debug identity endpoint (temporary)
-        run: |
-          echo "--- resource=https://management.azure.com/ ---"
-          curl -s -m 10 -H "X-IDENTITY-HEADER: $IDENTITY_HEADER" \
-            "$IDENTITY_ENDPOINT?api-version=2019-08-01&resource=https://management.azure.com/" \
-            -o /tmp/token1.json -w "HTTP %{http_code}\n"
-          head -c 300 /tmp/token1.json; echo
-          echo "--- resource=https://management.core.windows.net/ ---"
-          curl -s -m 10 -H "X-IDENTITY-HEADER: $IDENTITY_HEADER" \
-            "$IDENTITY_ENDPOINT?api-version=2019-08-01&resource=https://management.core.windows.net/" \
-            -o /tmp/token2.json -w "HTTP %{http_code}\n"
-          head -c 300 /tmp/token2.json; echo
-
       - name: Deploy to Azure App Service (Managed Identity)
         run: |
-          az login --identity --debug 2>&1 | tail -60
+          az login --identity
           zip -r package.zip . -x ".git/*"
           az webapp deploy \
             --resource-group "${{ env.AZURE_RESOURCE_GROUP }}" \

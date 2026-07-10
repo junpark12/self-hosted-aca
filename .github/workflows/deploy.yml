@@ -5,11 +5,16 @@ name: Deploy to Azure App Service (via self-hosted runner)
 # (github-actions-runners-on-aca-keda.md). It builds this simple Node.js app
 # and deploys it to an Azure App Service (Linux, Node) instance.
 #
-# Required GitHub secrets (Settings -> Secrets and variables -> Actions):
-#   AZURE_WEBAPP_PUBLISH_PROFILE  -> Publish profile XML downloaded from the
-#                                    target App Service (Get publish profile)
-# Required GitHub variables (or hardcode below):
-#   AZURE_WEBAPP_NAME             -> Name of the target Azure App Service
+# Deploys using the runner's own Azure Managed Identity (Container App Job's
+# system-assigned identity) instead of a long-lived publish profile secret.
+# The identity must be granted "Website Contributor" (or Contributor) on the
+# target App Service resource group/scope beforehand.
+#
+# Required GitHub variables (Settings -> Secrets and variables -> Actions -> Variables):
+#   AZURE_WEBAPP_NAME              -> Name of the target Azure App Service
+#   AZURE_RESOURCE_GROUP           -> Resource group containing the App Service
+#
+# No GitHub secrets required (AZURE_WEBAPP_PUBLISH_PROFILE is no longer used).
 
 on:
   push:
@@ -18,6 +23,7 @@ on:
 
 env:
   AZURE_WEBAPP_NAME: ${{ vars.AZURE_WEBAPP_NAME }}
+  AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
   NODE_VERSION: '20.x'
 
 jobs:
@@ -41,9 +47,12 @@ jobs:
       - name: Run tests
         run: npm test
 
-      - name: Deploy to Azure App Service
-        uses: azure/webapps-deploy@v3
-        with:
-          app-name: ${{ env.AZURE_WEBAPP_NAME }}
-          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-          package: .
+      - name: Deploy to Azure App Service (Managed Identity)
+        run: |
+          az login --identity
+          zip -r package.zip . -x ".git/*"
+          az webapp deploy \
+            --resource-group "${{ env.AZURE_RESOURCE_GROUP }}" \
+            --name "${{ env.AZURE_WEBAPP_NAME }}" \
+            --src-path package.zip \
+            --type zip

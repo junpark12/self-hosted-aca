@@ -8,7 +8,7 @@ const port = process.env.PORT || 8080;
 
 app.get('/', (req, res) => {
   res.status(200).json({
-    message: 'Hello from Azure App Service! good!!',
+    message: 'Hello from Azure App Service! good!! Very Hot',
     deployedVia: 'GitHub Actions self-hosted runner (Azure Container Apps + KEDA)',
     hostname: require('os').hostname(),
     timestamp: new Date().toISOString(),

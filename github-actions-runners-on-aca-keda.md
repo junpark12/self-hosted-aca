@@ -320,12 +320,31 @@ az network private-endpoint dns-zone-group create --resource-group $RESOURCE_GRO
   --private-dns-zone "privatelink.azurecr.io" --zone-name "acr"
 ```
 
-### 7.5 Key Vault (Private Endpoint, Public access 비활성화)
+### 7.5 Key Vault (Public access 허용 생성 → 시크릿 등록 → Private Endpoint 전환 후 Public access 비활성화)
+
+> 💡 Key Vault는 **Public access를 허용한 상태로 먼저 생성해 시크릿을 등록**한 뒤, Private Endpoint 구성을 마치고 **마지막에 Public access를 비활성화**하는 순서를 권장합니다. 처음부터 `Disabled`로 생성하면 Private Endpoint/DNS가 구성되기 전까지는 로컬 CLI(퍼블릭 네트워크)에서 시크릿을 등록할 방법이 없어, 점프박스나 별도 Private 경유 클라이언트가 필요해집니다.
 
 ```bash
+# 1) Key Vault 생성 (Public access 허용 상태로 시작)
 az keyvault create --resource-group $RESOURCE_GROUP --name $KV_NAME \
-  --location $LOCATION --enable-rbac-authorization true --public-network-access Disabled
+  --location $LOCATION --enable-rbac-authorization true --public-network-access Enabled
 
+# 본인 계정에 시크릿 등록 권한 부여 (RBAC)
+MY_OBJECT_ID=$(az ad signed-in-user show --query id -o tsv)
+KV_ID=$(az keyvault show --name $KV_NAME --query id -o tsv)
+az role assignment create --assignee $MY_OBJECT_ID \
+  --role "Key Vault Secrets Officer" --scope $KV_ID
+
+# 2) GitHub App 자격 증명을 시크릿으로 등록 (Public access가 열려있는 동안 진행)
+# App ID, Installation ID는 메타데이터로 사용되므로 시크릿일 필요는 없지만 관리 편의상 함께 저장 가능
+az keyvault secret set --vault-name $KV_NAME --name "github-app-id" --value "<APP_ID>"
+az keyvault secret set --vault-name $KV_NAME --name "github-app-installation-id" --value "<INSTALLATION_ID>"
+
+# Private Key(.pem) 파일 내용을 시크릿으로 저장 (KEDA appKey 인증에 사용)
+az keyvault secret set --vault-name $KV_NAME --name "github-app-private-key" \
+  --file "/path/to/your-github-app.private-key.pem"
+
+# 3) Private DNS Zone + VNet 연결
 az network private-dns zone create --resource-group $RESOURCE_GROUP \
   --name "privatelink.vaultcore.azure.net"
 
@@ -333,8 +352,7 @@ az network private-dns link vnet create --resource-group $RESOURCE_GROUP \
   --zone-name "privatelink.vaultcore.azure.net" --name "kv-dns-link" \
   --virtual-network $VNET_NAME --registration-enabled false
 
-KV_ID=$(az keyvault show --name $KV_NAME --query id -o tsv)
-
+# 4) Private Endpoint 생성
 az network private-endpoint create --resource-group $RESOURCE_GROUP \
   --name "pe-kv" --vnet-name $VNET_NAME --subnet $PE_SUBNET \
   --private-connection-resource-id $KV_ID --group-id vault \
@@ -344,22 +362,8 @@ az network private-endpoint dns-zone-group create --resource-group $RESOURCE_GRO
   --endpoint-name "pe-kv" --name "kv-zone-group" \
   --private-dns-zone "privatelink.vaultcore.azure.net" --zone-name "vault"
 
-# 본인 계정에 시크릿 등록 권한 부여 (RBAC)
-MY_OBJECT_ID=$(az ad signed-in-user show --query id -o tsv)
-az role assignment create --assignee $MY_OBJECT_ID \
-  --role "Key Vault Secrets Officer" --scope $KV_ID
-```
-
-### 7.6 GitHub App 자격 증명을 Key Vault에 저장
-
-```bash
-# App ID, Installation ID는 메타데이터로 사용되므로 시크릿일 필요는 없지만 관리 편의상 함께 저장 가능
-az keyvault secret set --vault-name $KV_NAME --name "github-app-id" --value "<APP_ID>"
-az keyvault secret set --vault-name $KV_NAME --name "github-app-installation-id" --value "<INSTALLATION_ID>"
-
-# Private Key(.pem) 파일 내용을 시크릿으로 저장 (KEDA appKey 인증에 사용)
-az keyvault secret set --vault-name $KV_NAME --name "github-app-private-key" \
-  --file "/path/to/your-github-app.private-key.pem"
+# 5) 시크릿 등록 및 Private Endpoint 구성이 끝났으면 Public access 비활성화
+az keyvault update --name $KV_NAME --public-network-access Disabled
 ```
 
 ## 8. Runner Docker 이미지 (GitHub App 인증 반영)
@@ -811,7 +815,7 @@ gh variable set AZURE_WEBAPP_NAME --repo junpark12/self-hosted-aca --body "app-s
 
 ### 18.5 다음 단계 (사용자 진행 예정)
 
-1. ACR, Key Vault 생성 (섹션 7.4~7.6)
+1. ACR, Key Vault 생성 (섹션 7.4~7.5)
 2. Container Apps Environment 생성 — **`--enable-workload-profiles true`** 필수 (섹션 10)
 3. Container App Job(Runner) 생성 + KEDA Scale Rule 연결 (섹션 11)
 4. `.github/workflows/deploy.yml`을 실제로 트리거해서 **self-hosted runner 경유 배포**까지 end-to-end 검증

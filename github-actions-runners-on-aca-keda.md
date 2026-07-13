@@ -1,5 +1,7 @@
 # Azure Container Apps + KEDA로 GitHub Actions Self-hosted Runner 구성하기 (Private 환경 / GitHub App 인증)
 
+![Architecture Diagram](./architecture-diagram.svg)
+
 > 원문: [Running GitHub Actions Runners on Azure Container Apps with KEDA Autoscaling](https://techcommunity.microsoft.com/blog/azureinfrastructureblog/running-github-actions-runners-on-azure-container-apps-with-keda-autoscaling/4512980) (Microsoft Tech Community)
 >
 > ⚠️ 원문은 **Public 접근 + PAT 인증 + Portal 조작** 기준으로 작성되었습니다. 본 문서는 다음 전제로 재구성했습니다.

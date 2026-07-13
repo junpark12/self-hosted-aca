@@ -504,14 +504,22 @@ ENTRYPOINT ["./start.sh"]
 
 ## 9. 이미지 빌드 (Docker 불필요, ACR Tasks 사용 — Private 환경 권장)
 
+> ⚠️ **ACR이 Public access 비활성화 상태이면 `az acr build`가 실패합니다.** `az acr build`는 로컬 소스를 업로드한 뒤 ACR Tasks(관리형 빌드 에이전트)가 해당 ACR에 접근해 빌드/푸시하는 방식인데, 이 접근 경로가 Private Endpoint를 경유하지 않고 퍼블릭 엔드포인트를 사용하기 때문입니다. 이미지를 새로 빌드/업데이트할 때마다 아래처럼 **Public access를 임시로 허용 → 빌드 → 다시 비활성화**하는 절차를 사용합니다.
+
 ```bash
 cd github-runner-image   # Dockerfile, start.sh 위치 폴더
 
-az acr login --name $ACR_NAME 2>/dev/null || true
+# 1) 빌드를 위해 ACR Public access 임시 허용
+az acr update --name $ACR_NAME --public-network-enabled true --default-action Allow
+
+# 2) 이미지 빌드 + 푸시 (ACR Tasks 사용, 로컬 Docker 불필요)
 az acr build --registry $ACR_NAME --image $IMAGE_NAME:$IMAGE_TAG --file Dockerfile .
+
+# 3) 빌드 완료 후 다시 Private-only로 복원
+az acr update --name $ACR_NAME --public-network-enabled false --default-action Deny
 ```
 
-> ACR이 Public access 비활성화 상태이면 `az acr build`도 ACR 접근 권한이 있는 자격 증명(로그인 세션)으로 Azure 내부 빌드 에이전트를 사용하므로 대부분 문제 없이 동작합니다. 사내 CI 파이프라인(Private Agent)에서 실행하는 것을 권장합니다.
+> Dockerfile을 수정한 뒤에는 반드시 이 절차로 **재빌드**해야 변경사항이 이미지에 반영됩니다. Job은 태그(`:$IMAGE_TAG`)만 참조하므로 재빌드를 잊으면 이전 이미지가 계속 실행되어 원인 파악이 어려운 실패로 이어질 수 있습니다. `az acr task list-runs --registry $ACR_NAME`으로 마지막 빌드 로그를 확인해 실제 반영 여부를 검증할 수 있습니다.
 
 ## 10. Container Apps Environment 생성 (Internal-only, Workload Profiles — UDR 지원 필수)
 

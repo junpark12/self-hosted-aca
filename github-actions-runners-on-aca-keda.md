@@ -1054,12 +1054,3 @@ Managed Identity 전환(섹션 20) 이후 실제 워크플로우를 실행하여
 **Container App Job 실행 이력** (Azure Portal, 워크플로우 트리거마다 새 Execution 생성됨):
 
 ![Container App Job Execution history - 여러 건 Succeeded](images/aca-job-execution-history.png)
-
----
-
-## 추가로 확인이 필요한 부분
-
-1. **기존 네트워크 재사용 여부**: 이미 사내 Hub-Spoke VNet/Azure Firewall이 있다면 신규 생성 대신 기존 리소스에 Subnet만 추가하는 형태로 조정 가능합니다. 기존 구성이 있는지 알려주시면 CLI를 맞춰 드리겠습니다.
-2. **Azure Firewall SKU**: Standard로 충분한지, Premium(TLS 검사, IDPS)이 필요한지 보안 요구사항에 따라 결정이 필요합니다.
-3. **ACR 티어**: Private Endpoint는 Premium ACR SKU가 필요합니다(비용 증가) — 이미 Premium ACR을 쓰고 있는지 확인 부탁드립니다.
-4. **GitHub App 소유 주체**: 이 App을 조직 소유로 등록할지, 특정 관리자 개인 계정 소유로 할지 정책 확인이 필요합니다(조직 소유 권장).

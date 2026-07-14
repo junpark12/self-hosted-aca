@@ -1047,6 +1047,14 @@ Managed Identity 전환(섹션 20) 이후 실제 워크플로우를 실행하여
 | `az webapp deploy` (Zip Deploy) | ✅ 성공 |
 | App Service 실제 응답 확인 (`curl https://app-selfhosted-aca-junpark12-kr.azurewebsites.net/`) | ✅ `HTTP 200`, 최신 배포 내용 반영 확인 |
 
+**GitHub Actions 워크플로우 실행 결과** (self-hosted runner에서 실행, 성공):
+
+![GitHub Actions 워크플로우 실행 결과 - build-and-deploy 성공](images/github-actions-run-result.png)
+
+**Container App Job 실행 이력** (Azure Portal, 워크플로우 트리거마다 새 Execution 생성됨):
+
+![Container App Job Execution history - 여러 건 Succeeded](images/aca-job-execution-history.png)
+
 ---
 
 ## 추가로 확인이 필요한 부분

@@ -160,6 +160,8 @@ az group create --name $RESOURCE_GROUP --location $LOCATION
 
 ### 7.2 VNet / Subnet 생성
 
+> ⚠️ **`$INFRA_SUBNET`(Container Apps 인프라용 서브넷)은 해당 Container Apps Environment가 단독으로 사용해야 합니다.** [Microsoft Learn 공식 문서](https://learn.microsoft.com/en-us/azure/container-apps/networking): *"you need to provide a subnet that's dedicated exclusively to the Container Apps environment that you deploy. This subnet isn't available to other services."* 즉 다른 Container Apps Environment는 물론, VM/App Service/AKS 등 다른 컴퓨트 리소스, Application Gateway, **Private Endpoint조차** 같은 서브넷에 배치할 수 없습니다 — 이 문서에서 Private Endpoint(ACR/Key Vault)용 서브넷(`$PE_SUBNET`)을 별도로 분리한 이유입니다.
+
 ```bash
 # VNet 생성
 az network vnet create \

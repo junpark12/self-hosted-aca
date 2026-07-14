@@ -4,6 +4,7 @@ const app = express();
 
 // Azure App Service (Linux) injects the PORT environment variable —
 // the app must listen on it (falls back to 8080 for local runs).
+// test
 const port = process.env.PORT || 8080;
 
 app.get('/', (req, res) => {
